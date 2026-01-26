@@ -2,6 +2,8 @@
 // Uses Replit's Gmail connector
 
 import { google, gmail_v1 } from "googleapis";
+import { format } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 
 let connectionSettings: any;
 
@@ -109,16 +111,14 @@ export function formatAppointmentEmail(appointment: {
   duration: number;
   meetLink?: string;
   formResponses: Record<string, any>;
+  timezone?: string;
 }): string {
-  const formattedDate = new Date(appointment.dateTime).toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
+  const timezone = appointment.timezone || "America/New_York";
+  const appointmentDate = new Date(appointment.dateTime);
+  const zonedDate = toZonedTime(appointmentDate, timezone);
+  
+  // Format the date in the configured timezone
+  const formattedDate = format(zonedDate, "EEEE, MMMM d, yyyy 'at' h:mm a") + ` (${timezone.replace("_", " ")})`;
 
   let formResponsesHtml = "";
   for (const [key, value] of Object.entries(appointment.formResponses)) {
