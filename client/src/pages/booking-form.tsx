@@ -193,11 +193,11 @@ export default function BookingFormPage() {
                 </a>
               )}
 
-              <Link href="/">
-                <Button variant="outline" className="w-full" data-testid="button-book-another">
-                  Book Another Appointment
+              <a href="https://richmondhypnosiscenter.com" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="w-full" data-testid="button-back-to-site">
+                  Back to Richmond Hypnosis Center
                 </Button>
-              </Link>
+              </a>
             </div>
           </CardContent>
         </Card>
