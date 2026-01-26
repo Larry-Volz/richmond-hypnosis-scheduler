@@ -296,10 +296,14 @@ export async function registerRoutes(
           // Format subject line in the configured timezone
           const zonedDateTime = toZonedTime(parseISO(data.dateTime), settings.timezone || "America/New_York");
           const subjectDate = format(zonedDateTime, "MMM d, yyyy 'at' h:mm a");
+          
+          // Get issues from form responses for subject line
+          const issues = data.formResponses?.issues;
+          const issuesText = Array.isArray(issues) ? issues.join(", ") : (issues || "");
 
           await sendEmail({
             to: settings.ownerEmail,
-            subject: `New Appointment: ${data.clientName} - ${subjectDate}`,
+            subject: `${data.clientName} ${issuesText}`.trim(),
             body: emailBody,
           });
         } catch (error) {

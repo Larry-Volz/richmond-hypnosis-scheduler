@@ -8,12 +8,27 @@ import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Calendar, Clock, Video, Check, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Settings } from "@shared/schema";
+
+const issuesOptions = [
+  "stop smoking",
+  "lose weight",
+  "release anxiety",
+  "overcome fear",
+  "eliminate stress",
+  "build confidence",
+  "reduce pain",
+  "learn hypnosis",
+  "Motor imagery or other stroke-related help",
+  "Other"
+];
 
 const returningClientSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -30,10 +45,20 @@ export default function ReturningBookingFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [appointmentDetails, setAppointmentDetails] = useState<any>(null);
+  const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
 
   const params = new URLSearchParams(search);
   const dateTime = params.get("dateTime");
   const duration = params.get("duration") || "60";
+
+  const handleIssueChange = (issue: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIssues(prev => [...prev, issue]);
+    } else {
+      setSelectedIssues(prev => prev.filter(i => i !== issue));
+    }
+  };
 
   const { data: settings, isLoading: settingsLoading } = useQuery<Settings>({
     queryKey: ["/api/settings"],
@@ -70,6 +95,15 @@ export default function ReturningBookingFormPage() {
   const onSubmit = async (data: ReturningClientFormData) => {
     if (!dateTime || !settings) return;
 
+    if (selectedIssues.length === 0) {
+      toast({
+        title: "Required Field Missing",
+        description: "Please select at least one issue you would like help with.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await bookMutation.mutateAsync({
@@ -79,7 +113,11 @@ export default function ReturningBookingFormPage() {
         clientEmail: data.email,
         clientPhone: data.phone,
         guests: [],
-        formResponses: { clientType: "Returning Client" },
+        formResponses: { 
+          clientType: "Returning Client",
+          issues: selectedIssues,
+          notes: notes || ""
+        },
       });
     } finally {
       setIsSubmitting(false);
@@ -247,6 +285,37 @@ export default function ReturningBookingFormPage() {
                 {form.formState.errors.phone && (
                   <p className="text-sm text-destructive mt-1">{form.formState.errors.phone.message}</p>
                 )}
+              </div>
+
+              <div className="pt-4 border-t">
+                <Label className="text-base">Please check the issues you would like help with *</Label>
+                <div className="mt-3 space-y-2">
+                  {issuesOptions.map((issue) => (
+                    <div key={issue} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`issue-${issue}`}
+                        checked={selectedIssues.includes(issue)}
+                        onCheckedChange={(checked) => handleIssueChange(issue, checked as boolean)}
+                        data-testid={`checkbox-issue-${issue.replace(/\s+/g, "-").toLowerCase()}`}
+                      />
+                      <Label htmlFor={`issue-${issue}`} className="text-sm font-normal cursor-pointer">
+                        {issue}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="notes">Please share any questions or notes you think I should know of in advance. Thank you.</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Any additional notes..."
+                  className="mt-2 min-h-[100px]"
+                  data-testid="textarea-notes"
+                />
               </div>
 
               <Button
