@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import BookingPage from "@/pages/booking";
 import BookingFormPage from "@/pages/booking-form";
+import ReturningBookingFormPage from "@/pages/returning-booking-form";
 import AdminPage from "@/pages/admin";
 
 function Router() {
@@ -13,6 +14,7 @@ function Router() {
     <Switch>
       <Route path="/" component={BookingPage} />
       <Route path="/book/info" component={BookingFormPage} />
+      <Route path="/book/returning" component={ReturningBookingFormPage} />
       <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>

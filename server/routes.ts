@@ -69,6 +69,9 @@ export async function registerRoutes(
   app.get("/api/available-slots", async (req, res) => {
     try {
       const dateStr = req.query.dateTime as string;
+      const durationParam = req.query.duration as string;
+      const slotIntervalParam = req.query.slotInterval as string;
+      
       if (!dateStr) {
         return res.status(400).json({ message: "Date is required" });
       }
@@ -78,6 +81,10 @@ export async function registerRoutes(
       const availability = await storage.getAvailability();
       const existingAppointments = await storage.getAppointments();
       const timezone = settings.timezone || "America/New_York";
+      
+      // Use custom duration and slot interval if provided
+      const appointmentDuration = durationParam ? parseInt(durationParam) : settings.appointmentDuration;
+      const slotInterval = slotIntervalParam ? parseInt(slotIntervalParam) : 60; // Default to hourly
 
       // Convert the date to the configured timezone
       const zonedDate = toZonedTime(date, timezone);
@@ -119,18 +126,25 @@ export async function registerRoutes(
         return aptDate.toDateString() === date.toDateString() && apt.status !== "cancelled";
       });
 
-      // Generate all possible hourly slots
-      const allHourlySlots: { hour: number; time: Date }[] = [];
+      // Generate all possible slots based on slotInterval (30 min = half-hourly, 60 min = hourly)
+      const allSlots: { hour: number; minute: number; time: Date }[] = [];
       for (let hour = startHour; hour < endHour; hour++) {
-        const slotDate = new Date(zonedDate);
-        slotDate.setHours(hour, 0, 0, 0);
-        const slotTime = fromZonedTime(slotDate, timezone);
-        allHourlySlots.push({ hour, time: slotTime });
+        for (let minute = 0; minute < 60; minute += slotInterval) {
+          // Check if slot end time is within availability
+          const slotEndMinutes = hour * 60 + minute + appointmentDuration;
+          const endHourMinutes = endHour * 60;
+          if (slotEndMinutes > endHourMinutes) continue;
+          
+          const slotDate = new Date(zonedDate);
+          slotDate.setHours(hour, minute, 0, 0);
+          const slotTime = fromZonedTime(slotDate, timezone);
+          allSlots.push({ hour, minute, time: slotTime });
+        }
       }
 
       // Filter to only available slots (no conflicts)
-      const availableHourlySlots = allHourlySlots.filter(slot => {
-        const slotEnd = addMinutes(slot.time, settings.appointmentDuration);
+      const availableSlots = allSlots.filter(slot => {
+        const slotEnd = addMinutes(slot.time, appointmentDuration);
         
         // Check if slot is in the past or before minimum booking time
         if (isBefore(slot.time, minBookingTime)) return false;
@@ -162,7 +176,7 @@ export async function registerRoutes(
 
       // Randomize which slots to offer (by default, randomly select a subset)
       const randomize = req.query.randomize !== "false";
-      let selectedSlots = [...availableHourlySlots];
+      let selectedSlots = [...availableSlots];
       
       if (randomize && selectedSlots.length > settings.maxAppointmentsPerDay) {
         // Shuffle and pick random subset

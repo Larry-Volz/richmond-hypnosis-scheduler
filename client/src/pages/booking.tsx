@@ -4,7 +4,7 @@ import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMon
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, UserPlus, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Settings, TimeSlot } from "@shared/schema";
 import { useLocation } from "wouter";
@@ -12,8 +12,11 @@ import logoImage from "@assets/60x60_SquareLogoNoWords-1_1769438502097.jpg";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+type ClientType = "new" | "returning" | null;
+
 export default function BookingPage() {
   const [, setLocation] = useLocation();
+  const [clientType, setClientType] = useState<ClientType>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -21,13 +24,17 @@ export default function BookingPage() {
     queryKey: ["/api/settings"],
   });
 
-  const availableSlotsUrl = selectedDate 
-    ? `/api/available-slots?dateTime=${encodeURIComponent(selectedDate.toISOString())}`
+  // Returning clients get 60 min appointments with half-hourly slots
+  const duration = clientType === "returning" ? 60 : (settings?.appointmentDuration || 45);
+  const slotInterval = clientType === "returning" ? 30 : 60;
+
+  const availableSlotsUrl = selectedDate && clientType
+    ? `/api/available-slots?dateTime=${encodeURIComponent(selectedDate.toISOString())}&duration=${duration}&slotInterval=${slotInterval}`
     : null;
 
   const { data: availableSlots, isLoading: slotsLoading } = useQuery<TimeSlot[]>({
     queryKey: [availableSlotsUrl],
-    enabled: !!selectedDate && !!availableSlotsUrl,
+    enabled: !!selectedDate && !!availableSlotsUrl && !!clientType,
   });
 
   const calendarDays = useMemo(() => {
@@ -58,12 +65,19 @@ export default function BookingPage() {
   };
 
   const handleTimeSelect = (slot: TimeSlot) => {
-    if (!settings) return;
+    if (!settings || !clientType) return;
     const params = new URLSearchParams({
       dateTime: slot.dateTime,
-      duration: String(settings.appointmentDuration),
+      duration: String(duration),
+      clientType,
     });
-    setLocation(`/book/info?${params.toString()}`);
+    const formPath = clientType === "returning" ? "/book/returning" : "/book/info";
+    setLocation(`${formPath}?${params.toString()}`);
+  };
+
+  const handleClientTypeSelect = (type: ClientType) => {
+    setClientType(type);
+    setSelectedDate(null); // Reset date selection when changing client type
   };
 
   if (settingsLoading) {
@@ -96,10 +110,76 @@ export default function BookingPage() {
           </CardHeader>
           
           <CardContent className="p-0">
+            {/* Client Type Selection */}
+            {!clientType ? (
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Are you a new or returning client?</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Button
+                    variant="outline"
+                    className="h-auto p-6 flex flex-col items-center gap-3 hover-elevate"
+                    onClick={() => handleClientTypeSelect("new")}
+                    data-testid="button-new-client"
+                  >
+                    <UserPlus className="h-8 w-8 text-primary" />
+                    <div className="text-center">
+                      <div className="font-semibold">New Client</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        First time booking? Start here.
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {settings?.appointmentDuration || 45} minute screening
+                      </div>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto p-6 flex flex-col items-center gap-3 hover-elevate"
+                    onClick={() => handleClientTypeSelect("returning")}
+                    data-testid="button-returning-client"
+                  >
+                    <User className="h-8 w-8 text-primary" />
+                    <div className="text-center">
+                      <div className="font-semibold">Returning Client</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Welcome back! Book your next session.
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        60 minute session
+                      </div>
+                    </div>
+                  </Button>
+                </div>
+              </div>
+            ) : (
+            <>
             <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
               {/* Calendar Section */}
               <div className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Select a date & time</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Select a date & time</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setClientType(null)}
+                    data-testid="button-change-client-type"
+                  >
+                    Change
+                  </Button>
+                </div>
+                <div className="mb-4 text-sm text-muted-foreground">
+                  {clientType === "new" ? (
+                    <span className="flex items-center gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      New Client - {settings?.appointmentDuration || 45} min screening
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Returning Client - 60 min session
+                    </span>
+                  )}
+                </div>
                 
                 {/* Month Navigation */}
                 <div className="flex items-center justify-between mb-4">
@@ -218,6 +298,8 @@ export default function BookingPage() {
                 {settings?.description}
               </p>
             </div>
+            </>
+            )}
           </CardContent>
         </Card>
       </div>
