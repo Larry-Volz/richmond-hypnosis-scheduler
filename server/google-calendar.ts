@@ -101,10 +101,25 @@ export async function createCalendarEvent(options: {
   attendees: string[];
   reminderMinutes: number;
   timezone?: string;
+  ownerEmail?: string;
 }): Promise<{ eventId: string; meetLink: string | null }> {
   try {
     const calendar = await getUncachableGoogleCalendarClient();
     const timezone = options.timezone || "America/New_York";
+
+    // Build attendees list with owner marked as accepted
+    const attendeesList = options.attendees.map((email) => {
+      // If this is the owner's email, mark them as accepted
+      if (options.ownerEmail && email.toLowerCase() === options.ownerEmail.toLowerCase()) {
+        return { email, responseStatus: "accepted" as const };
+      }
+      return { email };
+    });
+
+    // Add owner as accepted attendee if not already in list
+    if (options.ownerEmail && !options.attendees.some(e => e.toLowerCase() === options.ownerEmail!.toLowerCase())) {
+      attendeesList.unshift({ email: options.ownerEmail, responseStatus: "accepted" as const });
+    }
 
     const event = await calendar.events.insert({
       calendarId: options.calendarId,
@@ -121,7 +136,7 @@ export async function createCalendarEvent(options: {
           dateTime: options.endTime.toISOString(),
           timeZone: timezone,
         },
-        attendees: options.attendees.map((email) => ({ email })),
+        attendees: attendeesList,
         conferenceData: {
           createRequest: {
             requestId: `appointment-${Date.now()}`,

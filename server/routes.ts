@@ -6,6 +6,7 @@ import { sendEmail, formatAppointmentEmail } from "./google-mail";
 import { settingsSchema, availabilitySlotSchema, insertAppointmentSchema } from "@shared/schema";
 import { z } from "zod";
 import { addMinutes, format, parseISO, startOfDay, endOfDay, addHours, isBefore, isAfter } from "date-fns";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -76,9 +77,13 @@ export async function registerRoutes(
       const settings = await storage.getSettings();
       const availability = await storage.getAvailability();
       const existingAppointments = await storage.getAppointments();
+      const timezone = settings.timezone || "America/New_York";
 
-      // Get the day of week for the selected date
-      const dayOfWeek = date.getDay();
+      // Convert the date to the configured timezone
+      const zonedDate = toZonedTime(date, timezone);
+      
+      // Get the day of week for the selected date (in timezone)
+      const dayOfWeek = zonedDate.getDay();
       const dayAvailability = availability.find(a => a.dayOfWeek === dayOfWeek);
 
       if (!dayAvailability || !dayAvailability.enabled) {
@@ -95,11 +100,15 @@ export async function registerRoutes(
       const [startHour, startMinute] = dayAvailability.startTime.split(":").map(Number);
       const [endHour, endMinute] = dayAvailability.endTime.split(":").map(Number);
       
-      let currentTime = new Date(date);
-      currentTime.setHours(startHour, startMinute, 0, 0);
+      // Create start time in the configured timezone
+      const startDate = new Date(zonedDate);
+      startDate.setHours(startHour, startMinute, 0, 0);
+      // Convert from zoned time to UTC for proper comparison
+      let currentTime = fromZonedTime(startDate, timezone);
       
-      const endTime = new Date(date);
-      endTime.setHours(endHour, endMinute, 0, 0);
+      const endDate = new Date(zonedDate);
+      endDate.setHours(endHour, endMinute, 0, 0);
+      const endTime = fromZonedTime(endDate, timezone);
 
       // Get busy times from Google Calendar
       let busyTimes: { start: Date; end: Date }[] = [];
@@ -149,8 +158,10 @@ export async function registerRoutes(
         });
 
         if (isAvailable && !conflictsWithCalendar && !conflictsWithAppointments) {
+          // Format time in the configured timezone for display
+          const zonedCurrentTime = toZonedTime(currentTime, timezone);
           slots.push({
-            time: format(currentTime, "h:mm a"),
+            time: format(zonedCurrentTime, "h:mm a"),
             dateTime: currentTime.toISOString(),
             available: true,
           });
@@ -223,6 +234,7 @@ export async function registerRoutes(
           attendees,
           reminderMinutes: settings.reminderHours * 60,
           timezone: settings.timezone,
+          ownerEmail: settings.ownerEmail,
         });
 
         calendarEventId = result.eventId;
