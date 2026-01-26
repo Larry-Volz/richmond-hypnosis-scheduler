@@ -300,10 +300,16 @@ export async function registerRoutes(
           // Get issues from form responses for subject line
           const issues = data.formResponses?.issues;
           const issuesText = Array.isArray(issues) ? issues.join(", ") : (issues || "");
+          const isReturningClient = data.formResponses?.clientType === "Returning Client";
+          
+          // Different subject format for new vs returning clients
+          const subject = isReturningClient 
+            ? `${data.clientName} ${issuesText}`.trim()
+            : `free hypnosis screening ${data.clientName} ${issuesText}`.trim();
 
           await sendEmail({
             to: settings.ownerEmail,
-            subject: `${data.clientName} ${issuesText}`.trim(),
+            subject,
             body: emailBody,
           });
         } catch (error) {
