@@ -172,6 +172,15 @@ export async function registerRoutes(
         currentTime = addMinutes(currentTime, settings.appointmentDuration + settings.bufferTime);
       }
 
+      // Shuffle slots randomly by default (Fisher-Yates shuffle)
+      const randomize = req.query.randomize !== "false";
+      if (randomize && slots.length > 1) {
+        for (let i = slots.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [slots[i], slots[j]] = [slots[j], slots[i]];
+        }
+      }
+
       res.json(slots);
     } catch (error: any) {
       console.error("Error getting available slots:", error);
