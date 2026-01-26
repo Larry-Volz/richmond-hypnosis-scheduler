@@ -234,8 +234,15 @@ export async function registerRoutes(
         const startTime = parseISO(data.dateTime);
         const endTime = addMinutes(startTime, data.duration);
         
+        const isReturningClient = data.formResponses?.clientType === "Returning Client";
+        const issuesArray = data.formResponses?.issues;
+        const issuesText = Array.isArray(issuesArray) ? issuesArray.join(", ") : (issuesArray || "");
+        
         // Build description with form responses
-        let description = `${settings.description}\n\n---\n\nClient Details:\n`;
+        // For returning clients, skip the "During this initial consultation..." paragraph
+        let description = isReturningClient 
+          ? `Client Details:\n`
+          : `${settings.description}\n\n---\n\nClient Details:\n`;
         description += `Name: ${data.clientName}\n`;
         description += `Email: ${data.clientEmail}\n`;
         description += `Phone: ${data.clientPhone}\n\n`;
@@ -246,7 +253,10 @@ export async function registerRoutes(
           description += `${key}: ${displayValue}\n`;
         }
 
-        const eventTitle = settings.appointmentTitle.replace("{name}", data.clientName);
+        // Different title for new vs returning clients
+        const eventTitle = isReturningClient
+          ? `${data.clientName} ${issuesText}`.trim()
+          : settings.appointmentTitle.replace("{name}", data.clientName);
         
         const attendees = [data.clientEmail];
         if (data.guests && data.guests.length > 0) {
