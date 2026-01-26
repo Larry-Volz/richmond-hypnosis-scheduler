@@ -112,15 +112,15 @@ export const defaultFormFields: FormField[] = [
   { id: "notes", label: "Please share any questions or notes you think I should know of in advance. Thank you.", type: "textarea", required: false, placeholder: "Any additional notes..." }
 ];
 
-// Default availability (Monday-Friday 9am-5pm)
+// Default availability (Monday-Friday 11am-6pm)
 export const defaultAvailability: AvailabilitySlot[] = [
-  { dayOfWeek: 0, startTime: "09:00", endTime: "17:00", enabled: false }, // Sunday
-  { dayOfWeek: 1, startTime: "09:00", endTime: "17:00", enabled: true },  // Monday
-  { dayOfWeek: 2, startTime: "09:00", endTime: "17:00", enabled: true },  // Tuesday
-  { dayOfWeek: 3, startTime: "09:00", endTime: "17:00", enabled: true },  // Wednesday
-  { dayOfWeek: 4, startTime: "09:00", endTime: "17:00", enabled: true },  // Thursday
-  { dayOfWeek: 5, startTime: "09:00", endTime: "17:00", enabled: true },  // Friday
-  { dayOfWeek: 6, startTime: "09:00", endTime: "17:00", enabled: false }, // Saturday
+  { dayOfWeek: 0, startTime: "11:00", endTime: "18:00", enabled: false }, // Sunday
+  { dayOfWeek: 1, startTime: "11:00", endTime: "18:00", enabled: true },  // Monday
+  { dayOfWeek: 2, startTime: "11:00", endTime: "18:00", enabled: true },  // Tuesday
+  { dayOfWeek: 3, startTime: "11:00", endTime: "18:00", enabled: true },  // Wednesday
+  { dayOfWeek: 4, startTime: "11:00", endTime: "18:00", enabled: true },  // Thursday
+  { dayOfWeek: 5, startTime: "11:00", endTime: "18:00", enabled: true },  // Friday
+  { dayOfWeek: 6, startTime: "11:00", endTime: "18:00", enabled: false }, // Saturday
 ];
 
 // Default settings
@@ -131,9 +131,9 @@ export const defaultSettings: Settings = {
   maxAppointmentsPerDay: 8,
   reminderHours: 24,
   calendarId: "primary",
-  ownerEmail: undefined,
+  ownerEmail: "imaginologist@gmail.com",
   ownerName: "Doc Volz",
-  businessName: "Magical Mind Shifts Inc.",
+  businessName: "Richmond Hypnosis Center",
   appointmentTitle: "Hypnosis screening for {name}",
   description: "During this initial consultation and free screening we will get to know each other a little bit. We will discuss your goals. I will test your ability to achieve hypnosis. And if I believe you are a suitable candidate and have a good prognosis for success then I will invite you to enroll in a program. We will develop a treatment plan based on your unique circumstances and best practices most likely to bring you complete success.",
   timezone: "America/New_York",

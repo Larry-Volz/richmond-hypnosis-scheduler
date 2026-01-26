@@ -97,18 +97,8 @@ export async function registerRoutes(
       // Generate time slots based on availability
       const slots: { time: string; dateTime: string; available: boolean }[] = [];
       
-      const [startHour, startMinute] = dayAvailability.startTime.split(":").map(Number);
-      const [endHour, endMinute] = dayAvailability.endTime.split(":").map(Number);
-      
-      // Create start time in the configured timezone
-      const startDate = new Date(zonedDate);
-      startDate.setHours(startHour, startMinute, 0, 0);
-      // Convert from zoned time to UTC for proper comparison
-      let currentTime = fromZonedTime(startDate, timezone);
-      
-      const endDate = new Date(zonedDate);
-      endDate.setHours(endHour, endMinute, 0, 0);
-      const endTime = fromZonedTime(endDate, timezone);
+      const [startHour] = dayAvailability.startTime.split(":").map(Number);
+      const [endHour] = dayAvailability.endTime.split(":").map(Number);
 
       // Get busy times from Google Calendar
       let busyTimes: { start: Date; end: Date }[] = [];
@@ -129,56 +119,71 @@ export async function registerRoutes(
         return aptDate.toDateString() === date.toDateString() && apt.status !== "cancelled";
       });
 
-      let slotsCount = 0;
-      
-      while (isBefore(currentTime, endTime) && slotsCount < settings.maxAppointmentsPerDay) {
-        const slotEnd = addMinutes(currentTime, settings.appointmentDuration);
+      // Generate all possible hourly slots
+      const allHourlySlots: { hour: number; time: Date }[] = [];
+      for (let hour = startHour; hour < endHour; hour++) {
+        const slotDate = new Date(zonedDate);
+        slotDate.setHours(hour, 0, 0, 0);
+        const slotTime = fromZonedTime(slotDate, timezone);
+        allHourlySlots.push({ hour, time: slotTime });
+      }
+
+      // Filter to only available slots (no conflicts)
+      const availableHourlySlots = allHourlySlots.filter(slot => {
+        const slotEnd = addMinutes(slot.time, settings.appointmentDuration);
         
         // Check if slot is in the past or before minimum booking time
-        const isAvailable = !isBefore(currentTime, minBookingTime);
+        if (isBefore(slot.time, minBookingTime)) return false;
         
         // Check if slot conflicts with busy times from calendar
         const conflictsWithCalendar = busyTimes.some(busy => {
           return (
-            (currentTime >= busy.start && currentTime < busy.end) ||
+            (slot.time >= busy.start && slot.time < busy.end) ||
             (slotEnd > busy.start && slotEnd <= busy.end) ||
-            (currentTime <= busy.start && slotEnd >= busy.end)
+            (slot.time <= busy.start && slotEnd >= busy.end)
           );
         });
+        if (conflictsWithCalendar) return false;
 
         // Check if slot conflicts with existing appointments
         const conflictsWithAppointments = dayAppointments.some(apt => {
           const aptStart = parseISO(apt.dateTime);
           const aptEnd = addMinutes(aptStart, apt.duration);
           return (
-            (currentTime >= aptStart && currentTime < aptEnd) ||
+            (slot.time >= aptStart && slot.time < aptEnd) ||
             (slotEnd > aptStart && slotEnd <= aptEnd) ||
-            (currentTime <= aptStart && slotEnd >= aptEnd)
+            (slot.time <= aptStart && slotEnd >= aptEnd)
           );
         });
+        if (conflictsWithAppointments) return false;
 
-        if (isAvailable && !conflictsWithCalendar && !conflictsWithAppointments) {
-          // Format time in the configured timezone for display
-          const zonedCurrentTime = toZonedTime(currentTime, timezone);
-          slots.push({
-            time: format(zonedCurrentTime, "h:mm a"),
-            dateTime: currentTime.toISOString(),
-            available: true,
-          });
-          slotsCount++;
+        return true;
+      });
+
+      // Randomize which slots to offer (by default, randomly select a subset)
+      const randomize = req.query.randomize !== "false";
+      let selectedSlots = [...availableHourlySlots];
+      
+      if (randomize && selectedSlots.length > settings.maxAppointmentsPerDay) {
+        // Shuffle and pick random subset
+        for (let i = selectedSlots.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [selectedSlots[i], selectedSlots[j]] = [selectedSlots[j], selectedSlots[i]];
         }
-
-        // Move to next slot (duration + buffer)
-        currentTime = addMinutes(currentTime, settings.appointmentDuration + settings.bufferTime);
+        selectedSlots = selectedSlots.slice(0, settings.maxAppointmentsPerDay);
       }
 
-      // Shuffle slots randomly by default (Fisher-Yates shuffle)
-      const randomize = req.query.randomize !== "false";
-      if (randomize && slots.length > 1) {
-        for (let i = slots.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [slots[i], slots[j]] = [slots[j], slots[i]];
-        }
+      // Sort back to chronological order for display
+      selectedSlots.sort((a, b) => a.time.getTime() - b.time.getTime());
+
+      // Format slots for response
+      for (const slot of selectedSlots) {
+        const zonedSlotTime = toZonedTime(slot.time, timezone);
+        slots.push({
+          time: format(zonedSlotTime, "h:mm a"),
+          dateTime: slot.time.toISOString(),
+          available: true,
+        });
       }
 
       res.json(slots);
