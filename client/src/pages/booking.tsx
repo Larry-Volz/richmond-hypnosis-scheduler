@@ -4,10 +4,11 @@ import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMon
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, Clock, Video } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Settings, TimeSlot } from "@shared/schema";
 import { useLocation } from "wouter";
+import logoImage from "@assets/60x60_SquareLogoNoWords-1_1769438502097.jpg";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -81,11 +82,14 @@ export default function BookingPage() {
         <Card className="overflow-hidden">
           <CardHeader className="bg-primary/5 border-b px-6 py-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                <Video className="w-6 h-6 text-primary" />
-              </div>
+              <img 
+                src={logoImage} 
+                alt="Richmond Hypnosis Center" 
+                className="w-14 h-14 rounded-lg object-contain"
+                data-testid="img-logo"
+              />
               <div>
-                <p className="text-sm text-muted-foreground">{settings?.businessName || "Magical Mind Shifts Inc."}</p>
+                <p className="text-sm text-muted-foreground">{settings?.businessName || "Richmond Hypnosis Center"}</p>
                 <CardTitle className="text-xl">{settings?.ownerName || "Doc Volz"}</CardTitle>
               </div>
             </div>
