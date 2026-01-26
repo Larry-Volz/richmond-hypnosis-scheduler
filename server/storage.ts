@@ -1,37 +1,111 @@
-import { type User, type InsertUser } from "@shared/schema";
 import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import type { 
+  Settings, 
+  AvailabilitySlot, 
+  FormField, 
+  Appointment, 
+  InsertAppointment 
+} from "@shared/schema";
+import { defaultSettings, defaultAvailability, defaultFormFields } from "@shared/schema";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Settings
+  getSettings(): Promise<Settings>;
+  updateSettings(settings: Partial<Settings>): Promise<Settings>;
+  
+  // Availability
+  getAvailability(): Promise<AvailabilitySlot[]>;
+  updateAvailability(slots: AvailabilitySlot[]): Promise<AvailabilitySlot[]>;
+  
+  // Form Fields
+  getFormFields(): Promise<FormField[]>;
+  updateFormFields(fields: FormField[]): Promise<FormField[]>;
+  
+  // Appointments
+  getAppointments(): Promise<Appointment[]>;
+  getAppointment(id: string): Promise<Appointment | undefined>;
+  createAppointment(data: InsertAppointment): Promise<Appointment>;
+  updateAppointment(id: string, data: Partial<Appointment>): Promise<Appointment | undefined>;
+  deleteAppointment(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private settings: Settings;
+  private availability: AvailabilitySlot[];
+  private formFields: FormField[];
+  private appointments: Map<string, Appointment>;
 
   constructor() {
-    this.users = new Map();
+    this.settings = { ...defaultSettings };
+    this.availability = [...defaultAvailability];
+    this.formFields = [...defaultFormFields];
+    this.appointments = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  // Settings
+  async getSettings(): Promise<Settings> {
+    return { ...this.settings };
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+  async updateSettings(updates: Partial<Settings>): Promise<Settings> {
+    this.settings = { ...this.settings, ...updates };
+    return { ...this.settings };
+  }
+
+  // Availability
+  async getAvailability(): Promise<AvailabilitySlot[]> {
+    return [...this.availability];
+  }
+
+  async updateAvailability(slots: AvailabilitySlot[]): Promise<AvailabilitySlot[]> {
+    this.availability = [...slots];
+    return [...this.availability];
+  }
+
+  // Form Fields
+  async getFormFields(): Promise<FormField[]> {
+    return [...this.formFields];
+  }
+
+  async updateFormFields(fields: FormField[]): Promise<FormField[]> {
+    this.formFields = [...fields];
+    return [...this.formFields];
+  }
+
+  // Appointments
+  async getAppointments(): Promise<Appointment[]> {
+    return Array.from(this.appointments.values()).sort((a, b) => 
+      new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
     );
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async getAppointment(id: string): Promise<Appointment | undefined> {
+    return this.appointments.get(id);
+  }
+
+  async createAppointment(data: InsertAppointment): Promise<Appointment> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const appointment: Appointment = {
+      ...data,
+      id,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+    this.appointments.set(id, appointment);
+    return appointment;
+  }
+
+  async updateAppointment(id: string, data: Partial<Appointment>): Promise<Appointment | undefined> {
+    const existing = this.appointments.get(id);
+    if (!existing) return undefined;
+    
+    const updated = { ...existing, ...data };
+    this.appointments.set(id, updated);
+    return updated;
+  }
+
+  async deleteAppointment(id: string): Promise<boolean> {
+    return this.appointments.delete(id);
   }
 }
 
