@@ -73,43 +73,50 @@ export type TimeSlot = z.infer<typeof timeSlotSchema>;
 
 // Default form fields based on the Odoo form
 export const defaultFormFields: FormField[] = [
-  { id: "goal", label: "What is your goal?", type: "textarea", required: true, placeholder: "Please describe your goal..." },
-  { id: "issues", label: "Please check the issues you would like help with", type: "checkbox", required: true, options: [
-    "stop smoking",
-    "lose weight",
-    "release anxiety",
-    "overcome fear",
-    "eliminate stress",
-    "build confidence",
-    "reduce pain",
-    "learn hypnosis",
-    "Motor imagery or other stroke-related help",
+  { id: "issues", label: "What would you like help with? (check all that apply)", type: "checkbox", required: true, options: [
+    "Smoking cessation",
+    "Weight management",
+    "Anxiety & stress",
+    "Fear & phobia",
+    "Confidence",
+    "Pain reduction",
+    "Stroke prevention & recovery coaching",
+    "Learning hypnosis",
     "Other"
   ]},
-  { id: "previousEfforts", label: "What have you done so far to address this", type: "textarea", required: true, placeholder: "Describe your previous efforts..." },
-  { id: "lifeDifference", label: "What is going to be different in your life as a result of achieving this goal", type: "textarea", required: true, placeholder: "Describe the expected changes..." },
-  { id: "holdingBack", label: "What has it been holding you back from making this change", type: "textarea", required: true, placeholder: "What has been holding you back..." },
-  { id: "readinessScale", label: "How ready are you to make this change on a scale from one to 10", type: "select", required: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] },
-  { id: "whyNotLower", label: "Why didn't you pick a lower number", type: "textarea", required: false, placeholder: "What makes you feel ready..." },
-  { id: "motivation", label: "Why now? What motivated you to reach out to me today?", type: "textarea", required: true, placeholder: "What motivated you to reach out..." },
-  { id: "investment", label: "Are you ready to make an investment of time and money to reach your personal best?", type: "radio", required: true, options: [
+  { id: "goal", label: "What is your goal? In your own words, what would you like to accomplish?", type: "textarea", required: true, placeholder: "Describe your goal..." },
+  { id: "previousEfforts", label: "What have you already tried to address this?", type: "textarea", required: true, placeholder: "Describe your previous efforts..." },
+  { id: "holdingBack", label: "What has stopped you from making this change in the past?", type: "textarea", required: true, placeholder: "What has been holding you back..." },
+  { id: "lifeDifference", label: "How will your life be different once you've accomplished your goal? What will you be able to do, feel, or experience that you can't right now?", type: "textarea", required: true, placeholder: "Describe the expected changes..." },
+  { id: "readinessScale", label: "On a scale of 1–10, how important is it to you to make this change right now?", type: "radio", required: true, options: [
+    "1–3 (I'm exploring the idea)",
+    "4–6 (I'm fairly motivated)",
+    "7–9 (This is very important to me)",
+    "10 (This is the most important thing in my life right now)"
+  ]},
+  { id: "whyNotLower", label: "Why didn't you pick a lower number?", type: "textarea", required: false, placeholder: "What makes you feel ready..." },
+  { id: "motivation", label: "What motivated you to reach out today?", type: "textarea", required: true, placeholder: "What motivated you to reach out..." },
+  { id: "support", label: "Are the people close to you supportive of this decision?", type: "radio", required: true, options: [
+    "Yes, fully",
+    "Somewhat",
+    "They don't know yet",
+    "No"
+  ]},
+  { id: "investment", label: "Are you ready to invest time and money to reach your personal best?", type: "radio", required: true, options: [
     "Yes, if necessary, I would be willing to do so.",
     "No, I would not be willing to make an investment in myself."
   ]},
-  { id: "referralSource", label: "Where did you hear about me?", type: "select", required: true, options: [
-    "Google search",
-    "Google ad",
-    "other search engine",
-    "Dr. referral (please tell us who to thank in the notes)",
-    "friend referral (please tell us who to thank in the notes)",
-    "Facebook",
-    "Instagram",
-    "LinkedIn",
-    "YouTube",
-    "threads",
-    "other"
+  { id: "triggerContext", label: "When and where does this problem most often occur? (time of day, situations, triggers)", type: "textarea", required: false, placeholder: "e.g., After dinner, when stressed at work..." },
+  { id: "behaviorPurpose", label: "Is there any part of this behavior that has served a purpose for you — even if it's been harmful overall?", type: "textarea", required: false, placeholder: "For example, smoking might relieve stress..." },
+  { id: "referralSource", label: "Where did you hear about us?", type: "select", required: true, options: [
+    "Referral from friend or family member",
+    "Referred by a physician",
+    "Referred by a therapist or counselor",
+    "Internet search",
+    "Social media",
+    "Other"
   ]},
-  { id: "notes", label: "Please share any questions or notes you think I should know of in advance. Thank you.", type: "textarea", required: false, placeholder: "Any additional notes..." }
+  { id: "notes", label: "Please share any questions or notes you think I should know of in advance.", type: "textarea", required: false, placeholder: "Any additional notes..." }
 ];
 
 // Default availability (Monday-Friday 11am-6pm)
