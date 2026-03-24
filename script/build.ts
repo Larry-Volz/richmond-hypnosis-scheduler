@@ -30,6 +30,8 @@ const allowlist = [
   "xlsx",
   "zod",
   "zod-validation-error",
+  "googleapis",
+  "date-fns-tz",
 ];
 
 async function buildAll() {
