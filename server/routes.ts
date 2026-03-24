@@ -289,6 +289,29 @@ export async function registerRoutes(
         status: "confirmed",
       });
 
+      // Send lead to CRM
+      if (process.env.CRM_WEBHOOK_URL) {
+        try {
+          await fetch(process.env.CRM_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-webhook-secret': process.env.CRM_WEBHOOK_SECRET || ''
+            },
+            body: JSON.stringify({
+              clientName: data.clientName,
+              clientEmail: data.clientEmail,
+              clientPhone: data.clientPhone,
+              dateTime: data.dateTime,
+              formResponses: data.formResponses
+            })
+          });
+        } catch (err) {
+          console.error('CRM webhook error:', err);
+          // Don't fail the booking if CRM is unreachable
+        }
+      }
+      
       // Send email notification to owner
       if (settings.ownerEmail) {
         try {
