@@ -29,7 +29,7 @@ export const settingsSchema = z.object({
   minAdvanceBooking: z.number().min(0).default(24), // Hours in advance required to book
   maxAppointmentsPerDay: z.number().min(1).default(8), // Max appointments shown per day
   reminderHours: z.number().min(1).default(24), // Hours before to send reminder
-  calendarId: z.string().default("primary"), // Google Calendar ID to use
+  calendarId: z.string().default("larry@richmondhypnosiscenter.com"), // Google Calendar ID to use
   ownerEmail: z.string().email().optional(), // Email to receive notifications
   ownerName: z.string().default("Doc Volz"),
   businessName: z.string().default("Magical Mind Shifts Inc."),
@@ -137,8 +137,8 @@ export const defaultSettings: Settings = {
   minAdvanceBooking: 24,
   maxAppointmentsPerDay: 8,
   reminderHours: 24,
-  calendarId: "primary",
-  ownerEmail: "imaginologist@gmail.com",
+  calendarId: "larry@richmondhypnosiscenter.com",
+  ownerEmail: "larry@richmondhypnosiscenter.com",
   ownerName: "Doc Volz",
   businessName: "Richmond Hypnosis Center",
   appointmentTitle: "Hypnosis screening for {name}",
