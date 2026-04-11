@@ -15,22 +15,32 @@ function getOAuthClient() {
 export async function getBusyTimes(
   calendarId: string,
   timeMin: Date,
-  timeMax: Date
+  timeMax: Date,
+  additionalCalendarIds: string[] = []
 ): Promise<{ start: Date; end: Date }[]> {
   try {
     const calendar = google.calendar({ version: "v3", auth: getOAuthClient() });
+
+    // Build deduplicated list of all calendars to check
+    const allCalendarIds = Array.from(new Set([calendarId, ...additionalCalendarIds]));
+
     const response = await calendar.freebusy.query({
       requestBody: {
         timeMin: timeMin.toISOString(),
         timeMax: timeMax.toISOString(),
-        items: [{ id: calendarId }],
+        items: allCalendarIds.map((id) => ({ id })),
       },
     });
-    const busyTimes = response.data.calendars?.[calendarId]?.busy || [];
-    return busyTimes.map((busy) => ({
-      start: new Date(busy.start!),
-      end: new Date(busy.end!),
-    }));
+
+    // Merge busy times from all calendars into one array
+    const merged: { start: Date; end: Date }[] = [];
+    for (const id of allCalendarIds) {
+      const busy = response.data.calendars?.[id]?.busy || [];
+      for (const b of busy) {
+        merged.push({ start: new Date(b.start!), end: new Date(b.end!) });
+      }
+    }
+    return merged;
   } catch (error) {
     console.error("Error fetching busy times:", error);
     throw error;
