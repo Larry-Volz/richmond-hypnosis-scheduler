@@ -292,23 +292,35 @@ export async function registerRoutes(
       // Send lead to CRM
       if (process.env.CRM_WEBHOOK_URL) {
         try {
-          await fetch(process.env.CRM_WEBHOOK_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-webhook-secret': process.env.CRM_WEBHOOK_SECRET || ''
-            },
-            body: JSON.stringify({
-              clientName: data.clientName,
-              clientEmail: data.clientEmail,
-              clientPhone: data.clientPhone,
-              dateTime: data.dateTime,
-              formResponses: data.formResponses
-            })
+          const webhookPayload = JSON.stringify({
+            clientName: data.clientName,
+            clientEmail: data.clientEmail,
+            clientPhone: data.clientPhone,
+            dateTime: data.dateTime,
+            formResponses: data.formResponses
+          });
+          const webhookUrl = new URL(process.env.CRM_WEBHOOK_URL);
+          const https = await import('https');
+          await new Promise<void>((resolve, reject) => {
+            const req = https.request({
+              hostname: webhookUrl.hostname,
+              path: webhookUrl.pathname,
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-webhook-secret': process.env.CRM_WEBHOOK_SECRET || '',
+                'Content-Length': Buffer.byteLength(webhookPayload)
+              }
+            }, (res) => {
+              res.on('data', () => {});
+              res.on('end', () => { console.log('CRM webhook sent, status:', res.statusCode); resolve(); });
+            });
+            req.on('error', (err) => { console.error('CRM webhook error:', err); resolve(); });
+            req.write(webhookPayload);
+            req.end();
           });
         } catch (err) {
           console.error('CRM webhook error:', err);
-          // Don't fail the booking if CRM is unreachable
         }
       }
       
