@@ -114,13 +114,12 @@ export async function registerRoutes(
           settings.calendarId || "primary",
           startOfDay(date),
           endOfDay(date),
-          ["larry@richmondhypnosiscenter.com"]
+          ["imaginologist@gmail.com"]
         );
       } catch (error) {
         console.error("Error fetching calendar busy times:", error);
         // Continue without calendar integration if it fails
       }
-
       // Filter existing appointments for this day
       const dayAppointments = existingAppointments.filter(apt => {
         const aptDate = parseISO(apt.dateTime);
