@@ -107,13 +107,14 @@ export async function registerRoutes(
       const [startHour] = dayAvailability.startTime.split(":").map(Number);
       const [endHour] = dayAvailability.endTime.split(":").map(Number);
 
-      // Get busy times from Google Calendar
+      // Get busy times from Google Calendar (check both calendars)
       let busyTimes: { start: Date; end: Date }[] = [];
       try {
         busyTimes = await getBusyTimes(
           settings.calendarId || "primary",
           startOfDay(date),
-          endOfDay(date)
+          endOfDay(date),
+          ["larry@richmondhypnosiscenter.com"]
         );
       } catch (error) {
         console.error("Error fetching calendar busy times:", error);
