@@ -2,10 +2,26 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-
 const app = express();
 const httpServer = createServer(app);
 
+// CORS — allow richmondhypnosiscenter.com and local dev to call the API
+app.use((req, res, next) => {
+  const allowed = [
+    "https://www.richmondhypnosiscenter.com",
+    "https://richmondhypnosiscenter.com",
+    "http://localhost:5000",
+    "http://localhost:3000",
+  ];
+  const origin = req.headers.origin || "";
+  if (allowed.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
