@@ -10,6 +10,7 @@ app.use((req, res, next) => {
   const allowed = [
     "https://www.richmondhypnosiscenter.com",
     "https://richmondhypnosiscenter.com",
+    "https://strokementor-crm-production.up.railway.app",
     "http://localhost:5000",
     "http://localhost:3000",
   ];
