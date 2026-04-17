@@ -7,6 +7,7 @@ import { settingsSchema, availabilitySlotSchema, insertAppointmentSchema } from 
 import { z } from "zod";
 import { addMinutes, format, parseISO, startOfDay, endOfDay, addHours, isBefore, isAfter } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
+import { google } from "googleapis";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -472,6 +473,60 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ============================================================
+  // UPCOMING APPOINTMENTS — lookup by client email
+  // Queries larry@richmondhypnosiscenter.com calendar using
+  // the scheduler's RHC OAuth credentials
+  // ============================================================
+  app.get("/api/calendar/upcoming", async (req, res) => {
+    try {
+      const { email } = req.query;
+      if (!email) return res.status(400).json({ error: "email query parameter required" });
+
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        'https://strokementor-crm-production.up.railway.app/auth/google/callback'
+      );
+      oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+
+      const cal = google.calendar({ version: "v3", auth: oauth2Client });
+      const now = new Date();
+      const sixWeeksOut = new Date(now.getTime() + 42 * 24 * 60 * 60 * 1000);
+
+      const response = await cal.events.list({
+        calendarId: "larry@richmondhypnosiscenter.com",
+        timeMin: now.toISOString(),
+        timeMax: sixWeeksOut.toISOString(),
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 20,
+        q: email as string,
+      });
+
+      const events = response.data.items || [];
+      const clientEmail = (email as string).toLowerCase();
+
+      const matches = events.filter((event: any) => {
+        const attendees = (event.attendees || []).map((a: any) => (a.email || "").toLowerCase());
+        const desc = (event.description || "").toLowerCase();
+        return attendees.includes(clientEmail) || desc.includes(clientEmail);
+      }).map((event: any) => ({
+        id: event.id,
+        summary: event.summary,
+        start: event.start?.dateTime || event.start?.date,
+        end: event.end?.dateTime || event.end?.date,
+        meetLink: event.hangoutLink || null,
+        htmlLink: event.htmlLink,
+      }));
+
+      res.json(matches);
+    } catch (error: any) {
+      console.error("Error fetching upcoming appointments:", error.message);
+      res.status(500).json({ error: "Failed to fetch upcoming appointments" });
     }
   });
 
