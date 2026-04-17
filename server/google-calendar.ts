@@ -89,6 +89,10 @@ export async function createCalendarEvent(options: {
             conferenceSolutionKey: { type: "hangoutsMeet" },
           },
         },
+        recordingSettings: {
+          autoRecording: "USER_INITIATED",
+          autoTranscribe: true,
+        },
         reminders: {
           useDefault: false,
           overrides: [
