@@ -207,6 +207,78 @@ export async function registerRoutes(
     }
   });
 
+ // Get ALL available slots for a date — no randomization, for practitioner use
+  app.get("/api/available-slots/all", async (req, res) => {
+    try {
+      const dateStr = req.query.dateTime as string;
+      const durationParam = req.query.duration as string;
+      if (!dateStr) return res.status(400).json({ message: "Date is required" });
+      const date = parseISO(dateStr);
+      const settings = await storage.getSettings();
+      const availability = await storage.getAvailability();
+      const existingAppointments = await storage.getAppointments();
+      const timezone = settings.timezone || "America/New_York";
+      const appointmentDuration = durationParam ? parseInt(durationParam) : settings.appointmentDuration;
+      const zonedDate = toZonedTime(date, timezone);
+      const dayOfWeek = zonedDate.getDay();
+      const dayAvailability = availability.find(a => a.dayOfWeek === dayOfWeek);
+      if (!dayAvailability || !dayAvailability.enabled) return res.json([]);
+      const now = new Date();
+      const minBookingTime = addHours(now, settings.minAdvanceBooking);
+      const [startHour] = dayAvailability.startTime.split(":").map(Number);
+      const [endHour] = dayAvailability.endTime.split(":").map(Number);
+      let busyTimes: { start: Date; end: Date }[] = [];
+      try {
+        busyTimes = await getBusyTimes(
+          settings.calendarId || "primary",
+          startOfDay(date),
+          endOfDay(date),
+          ["imaginologist@gmail.com"]
+        );
+      } catch (error) {
+        console.error("Error fetching busy times:", error);
+      }
+      const dayAppointments = existingAppointments.filter(apt => {
+        const aptDate = parseISO(apt.dateTime);
+        return aptDate.toDateString() === date.toDateString() && apt.status !== "cancelled";
+      });
+      const slots: { time: string; dateTime: string; available: boolean }[] = [];
+      for (let hour = startHour; hour < endHour; hour++) {
+        const slotDate = new Date(zonedDate);
+        slotDate.setHours(hour, 0, 0, 0);
+        const slotTime = fromZonedTime(slotDate, timezone);
+        const slotEnd = addMinutes(slotTime, appointmentDuration);
+        if (isBefore(slotTime, minBookingTime)) continue;
+        const conflictsWithCalendar = busyTimes.some(busy =>
+          (slotTime >= busy.start && slotTime < busy.end) ||
+          (slotEnd > busy.start && slotEnd <= busy.end) ||
+          (slotTime <= busy.start && slotEnd >= busy.end)
+        );
+        if (conflictsWithCalendar) continue;
+        const conflictsWithAppointments = dayAppointments.some(apt => {
+          const aptStart = parseISO(apt.dateTime);
+          const aptEnd = addMinutes(aptStart, apt.duration);
+          return (
+            (slotTime >= aptStart && slotTime < aptEnd) ||
+            (slotEnd > aptStart && slotEnd <= aptEnd) ||
+            (slotTime <= aptStart && slotEnd >= aptEnd)
+          );
+        });
+        if (conflictsWithAppointments) continue;
+        const zonedSlotTime = toZonedTime(slotTime, timezone);
+        slots.push({
+          time: format(zonedSlotTime, "h:mm a"),
+          dateTime: slotTime.toISOString(),
+          available: true,
+        });
+      }
+      res.json(slots);
+    } catch (error: any) {
+      console.error("Error getting all available slots:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get all appointments
   app.get("/api/appointments", async (req, res) => {
     try {
