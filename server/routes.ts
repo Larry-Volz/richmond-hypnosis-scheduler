@@ -8,6 +8,61 @@ import { z } from "zod";
 import { addMinutes, format, parseISO, startOfDay, endOfDay, addHours, isBefore, isAfter } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { google } from "googleapis";
+import { Pool } from "pg";
+
+// Direct DB connection to PracticeMagic CRM (same DATABASE_URL on Railway)
+const crmPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 2 }) : null;
+
+async function syncLeadToCRM(data: {
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  dateTime: string;
+  formResponses: Record<string, any>;
+}) {
+  if (!crmPool) { console.log('No DATABASE_URL — skipping CRM sync'); return; }
+  try {
+    const existing = await crmPool.query(
+      `SELECT id FROM clients WHERE practitioner_id = 2 AND LOWER(email) = LOWER($1)`,
+      [data.clientEmail]
+    );
+    let clientId: number;
+    if (existing.rows.length > 0) {
+      clientId = existing.rows[0].id;
+    } else {
+      const result = await crmPool.query(
+        `INSERT INTO clients (practitioner_id, name, email, phone, status, start_date)
+         VALUES (2, $1, $2, $3, 'Lead', CURRENT_DATE) RETURNING id`,
+        [data.clientName, data.clientEmail, data.clientPhone]
+      );
+      clientId = result.rows[0].id;
+    }
+    await crmPool.query(
+      `UPDATE clients SET pipeline_stage = 'Screening Scheduled' WHERE id = $1`,
+      [clientId]
+    );
+    const fr = data.formResponses || {};
+    await crmPool.query(
+      `INSERT INTO client_intake (client_id, part3_data, current_part, updated_at)
+       VALUES ($1, $2::jsonb, 3, NOW())
+       ON CONFLICT (client_id) DO UPDATE SET part3_data = EXCLUDED.part3_data, current_part = 3, updated_at = NOW()`,
+      [clientId, JSON.stringify({
+        screening_inquiry: true, appointment_date: data.dateTime,
+        issues: Array.isArray(fr.issues) ? fr.issues.join(', ') : fr.issues,
+        q1: fr.goal, previous_efforts: fr.previousEfforts,
+        q3: fr.holdingBack, q4: fr.lifeDifference,
+        importance: fr.readinessScale, why_not_lower: fr.whyNotLower,
+        q8_motivation: fr.motivation, support: fr.support,
+        investment_ready: fr.investment, q6: fr.triggerContext,
+        behavior_purpose: fr.behaviorPurpose, referral_source: fr.referralSource,
+        notes: fr.notes
+      })]
+    );
+    console.log(`✅ CRM sync complete for ${data.clientName} (id: ${clientId})`);
+  } catch (err: any) {
+    console.error('❌ CRM sync failed:', err.message);
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -362,40 +417,14 @@ export async function registerRoutes(
         status: "confirmed",
       });
 
-      // Send lead to CRM
-      if (process.env.CRM_WEBHOOK_URL) {
-        try {
-          const webhookPayload = JSON.stringify({
-            clientName: data.clientName,
-            clientEmail: data.clientEmail,
-            clientPhone: data.clientPhone,
-            dateTime: data.dateTime,
-            formResponses: data.formResponses
-          });
-          const webhookUrl = new URL(process.env.CRM_WEBHOOK_URL);
-          const https = await import('https');
-          await new Promise<void>((resolve, reject) => {
-            const req = https.request({
-              hostname: webhookUrl.hostname,
-              path: webhookUrl.pathname,
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-webhook-secret': process.env.CRM_WEBHOOK_SECRET || '',
-                'Content-Length': Buffer.byteLength(webhookPayload)
-              }
-            }, (res) => {
-              res.on('data', () => {});
-              res.on('end', () => { console.log('CRM webhook sent, status:', res.statusCode); resolve(); });
-            });
-            req.on('error', (err) => { console.error('CRM webhook error:', err); resolve(); });
-            req.write(webhookPayload);
-            req.end();
-          });
-        } catch (err) {
-          console.error('CRM webhook error:', err);
-        }
-      }
+      // Sync lead directly to CRM database
+      await syncLeadToCRM({
+        clientName: data.clientName,
+        clientEmail: data.clientEmail,
+        clientPhone: data.clientPhone,
+        dateTime: data.dateTime,
+        formResponses: data.formResponses,
+      });
       
       // Send email notification to owner
       if (settings.ownerEmail) {
