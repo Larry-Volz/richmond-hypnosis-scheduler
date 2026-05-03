@@ -47,6 +47,7 @@ export default function ReturningBookingFormPage() {
   const [appointmentDetails, setAppointmentDetails] = useState<any>(null);
   const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [smsConsent, setSmsConsent] = useState(true);
 
   const params = new URLSearchParams(search);
   const dateTime = params.get("dateTime");
@@ -113,11 +114,12 @@ export default function ReturningBookingFormPage() {
         clientEmail: data.email,
         clientPhone: data.phone,
         guests: [],
-        formResponses: { 
+        formResponses: {
           clientType: "Returning Client",
           issues: selectedIssues,
           notes: notes || ""
         },
+        smsConsent,
       });
     } finally {
       setIsSubmitting(false);
@@ -316,6 +318,19 @@ export default function ReturningBookingFormPage() {
                   className="mt-2 min-h-[100px]"
                   data-testid="textarea-notes"
                 />
+              </div>
+
+              {/* SMS Consent */}
+              <div className="flex items-start gap-3 pt-4 border-t">
+                <Checkbox
+                  id="sms-consent"
+                  checked={smsConsent}
+                  onCheckedChange={(checked) => setSmsConsent(checked as boolean)}
+                  data-testid="checkbox-sms-consent"
+                />
+                <Label htmlFor="sms-consent" className="text-sm font-normal leading-relaxed cursor-pointer text-muted-foreground">
+                  I agree to receive appointment reminders and session follow-up messages via text from Richmond Hypnosis Center. Reply STOP to opt out at any time. Message &amp; data rates may apply.
+                </Label>
               </div>
 
               <Button
