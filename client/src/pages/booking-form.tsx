@@ -127,7 +127,7 @@ export default function BookingFormPage() {
         clientEmail: data.email,
         clientPhone: data.phone,
         guests: data.guests ? data.guests.split(",").map(g => g.trim()).filter(Boolean) : [],
-                formResponses,
+        formResponses,
         smsConsent,
       });
     } finally {
@@ -401,6 +401,7 @@ export default function BookingFormPage() {
                   ))}
                 </div>
               )}
+
               {/* SMS Consent */}
               <div className="flex items-start gap-3 pt-4 border-t">
                 <Checkbox
