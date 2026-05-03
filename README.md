@@ -189,3 +189,5 @@ npm start
 ```
 
 Make sure all environment variables are set in your production environment, and update the `GOOGLE_REDIRECT_URI` to match your production domain.
+
+be happy!
